@@ -1,0 +1,2 @@
+### GET temperature and local
+GET http://localhost:8081/temperature/58046320 HTTP/1.1

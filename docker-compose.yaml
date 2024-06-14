@@ -1,0 +1,29 @@
+services:
+  locate:
+    build: weather/.
+    container_name: locateweather
+    environment:
+      - APP_PORT=8080
+    ports:
+      - "8080:8080"
+    restart: always
+    networks:
+      - weather_network
+
+  reader:
+    build: reader/.
+    container_name: readerweather
+    environment:
+      - APP_PORT=8081
+      - READER_PORT=8080
+      - READER_HOST=locateweather
+    ports:
+      - "8081:8081"
+    restart: always
+    networks:
+      - weather_network
+
+
+networks:
+    weather_network:
+        driver: bridge
