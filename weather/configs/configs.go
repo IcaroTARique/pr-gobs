@@ -5,7 +5,10 @@ import (
 )
 
 type conf struct {
-	WebServerPort string `mapstructure:"APP_PORT"`
+	WebServerPort        string `mapstructure:"APP_PORT"`
+	OtelExporterEndpoint string `mapstructure:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	OtelServiceName      string `mapstructure:"OTEL_SERVICE_NAME"`
+	OtelRequestName      string `mapstructure:"OTEL_REQUEST_NAME"`
 }
 
 func LoadConfig(path string) (*conf, error) {

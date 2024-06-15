@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/IcaroTARique/pr-gobs/configs"
 	"github.com/IcaroTARique/pr-gobs/internal/infra/weather_consumer"
 	"github.com/IcaroTARique/pr-gobs/internal/infra/webserver/handler"
@@ -26,7 +25,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("OTEL_SERVICE_NAME: ", conf.OtelServiceName)
 
 	observabilityProvider := observability.NewProvider(conf.OtelServiceName, conf.OtelExporterEndpoint)
 
@@ -53,17 +51,18 @@ func main() {
 			log.Fatalf("failed to shutdown TracerProvider: %s", err)
 		}
 	}()
-	//shutdown, err := observabilityProvider.InitProvider()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//defer func() {
-	//	if err := shutdown(ctx); err != nil {
-	//		log.Fatal(fmt.Printf("failed to shutdown TracerProvider: %w", err))
-	//	}
-	//}()
+	shutdownMeterProvider, err := observabilityProvider.InitMeterProvider(ctx, res, conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdownMeterProvider(ctx); err != nil {
+			log.Fatalf("failed to shutdown MeterProvider: %s", err)
+		}
+	}()
 
 	tracer := otel.Tracer("microsservice-tracer")
+	//meter := otel.Meter("microsservice-meter")
 
 	weatherConsumer := weather_consumer.NewWeatherConsumer(
 		conf.ReaderHost,

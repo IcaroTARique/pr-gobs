@@ -6,18 +6,25 @@ import (
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/api"
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/dto"
 	"github.com/go-chi/chi"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
 type ApiTemperatureResponse struct {
-	cepApi     api.Cep
-	weatherApi api.Weather
+	cepApi          api.Cep
+	weatherApi      api.Weather
+	Tracer          trace.Tracer
+	OtelRequestName string
 }
 
-func NewApiTemperatureResponse(cepApi api.Cep, weatherApi api.Weather) *ApiTemperatureResponse {
+func NewApiTemperatureResponse(cepApi api.Cep, weatherApi api.Weather, tracer trace.Tracer, otelRequestName string) *ApiTemperatureResponse {
 	return &ApiTemperatureResponse{
-		cepApi:     cepApi,
-		weatherApi: weatherApi,
+		cepApi:          cepApi,
+		weatherApi:      weatherApi,
+		Tracer:          tracer,
+		OtelRequestName: otelRequestName,
 	}
 }
 
@@ -25,11 +32,17 @@ func (at *ApiTemperatureResponse) GetTemperatureHandler(w http.ResponseWriter, r
 	cep := chi.URLParam(r, "cep")
 	fmt.Println(cep)
 
+	carrier := propagation.HeaderCarrier(r.Header)
+	ctx := r.Context()
+	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+	ctx, span := at.Tracer.Start(ctx, "Chamada externa"+at.OtelRequestName)
+	defer span.End()
+
 	if len(cep) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	cepResponse, err := at.cepApi.GetViaCepResponse(cep)
+	cepResponse, err := at.cepApi.GetViaCepResponse(cep, ctx)
 	if err != nil {
 		switch err.Error() {
 		case "error making request":
@@ -55,7 +68,7 @@ func (at *ApiTemperatureResponse) GetTemperatureHandler(w http.ResponseWriter, r
 			return
 		}
 	}
-	weatherResponse, err := at.weatherApi.GetWeatherApiResponse(cepResponse.Localidade)
+	weatherResponse, err := at.weatherApi.GetWeatherApiResponse(cepResponse.Localidade, ctx)
 	fmt.Println(weatherResponse)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -1,9 +1,13 @@
 package weather
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/dto"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -14,26 +18,32 @@ import (
 )
 
 type ApiWeather struct {
-	Url  string
-	XApi string
+	Url             string
+	XApi            string
+	Tracer          trace.Tracer
+	OtelRequestName string
 }
 
-func NewApiWeather() *ApiWeather {
+func NewApiWeather(tracer trace.Tracer, otelRequestName string) *ApiWeather {
 	return &ApiWeather{
-		Url:  "http://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no",
-		XApi: "e547194a521a49ddbcf220303241206",
+		Url:             "http://api.weatherapi.com/v1/current.json?key=%s&q=%s&aqi=no",
+		XApi:            "e547194a521a49ddbcf220303241206",
+		Tracer:          tracer,
+		OtelRequestName: otelRequestName,
 	}
 }
 
-func (aw *ApiWeather) GetWeatherApiResponse(cityName string) (dto.WeatherApiResponse, error) {
+func (aw *ApiWeather) GetWeatherApiResponse(cityName string, ctx context.Context) (dto.WeatherApiResponse, error) {
 
 	treatedCityName := UnicodeFormatCityNameString(cityName)
 	webUrlFormatTreatedCityName := WebUrlFormatCityNameString(treatedCityName)
 
 	url := fmt.Sprintf(aw.Url, aw.XApi, webUrlFormatTreatedCityName)
-	fmt.Println(url)
 
-	res, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return dto.WeatherApiResponse{}, fmt.Errorf("error making request")
 	}

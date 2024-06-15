@@ -5,8 +5,8 @@ services:
     environment:
       - APP_PORT=8080
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
-      - OTEL_SERVICE_NAME=readerweather
-      - OTEL_REQUEST_NAME=readerweather-request
+      - OTEL_SERVICE_NAME=locateweather
+      - OTEL_REQUEST_NAME=locateweather-request
     ports:
       - "8080:8080"
     restart: always
@@ -25,8 +25,8 @@ services:
       - READER_PORT=8080
       - READER_HOST=locateweather
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
-      - OTEL_SERVICE_NAME=reader
-      - OTEL_REQUEST_NAME=reader-request
+      - OTEL_SERVICE_NAME=readerweather
+      - OTEL_REQUEST_NAME=readerweather-request
     ports:
       - "8081:8081"
     restart: always

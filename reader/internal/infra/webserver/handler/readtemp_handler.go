@@ -29,6 +29,7 @@ func (th *ApiTemperatureHandler) NewApiTemperatureHandler(w http.ResponseWriter,
 	carrier := propagation.HeaderCarrier(r.Header)
 	ctx := r.Context()
 	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+
 	ctx, span := th.Tracer.Start(ctx, "Chamada externa"+th.OtelRequestName)
 	defer span.End()
 

@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -54,6 +56,22 @@ func (p *Provider) InitTracerProvider(ctx context.Context, res *resource.Resourc
 	return tracerProvider.Shutdown, nil
 }
 
+func (p *Provider) InitMeterProvider(ctx context.Context, res *resource.Resource, conn *grpc.ClientConn) (func(context.Context) error, error) {
+	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create metrics exporter: %w", err)
+	}
+
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
+		sdkmetric.WithResource(res),
+	)
+	otel.SetMeterProvider(meterProvider)
+
+	return meterProvider.Shutdown, nil
+}
+
+// Deprecated: The rule InitProvider is not recomended, try using InitMeterProvider instead.
 func (p *Provider) InitProvider() (func(context.Context) error, error) {
 	ctx := context.Background()
 
@@ -71,12 +89,6 @@ func (p *Provider) InitProvider() (func(context.Context) error, error) {
 
 	conn, err := grpc.NewClient(p.CollectorURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	//conn, err := grpc.DialContext(
-	//	ctx,
-	//	p.CollectorURL,
-	//	grpc.WithTransportCredentials(insecure.NewCredentials()),
-	//	grpc.WithBlock(),
-	//)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
 	}

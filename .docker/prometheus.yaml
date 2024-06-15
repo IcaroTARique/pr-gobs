@@ -5,12 +5,12 @@ scrape_configs:
       - targets: ['otel-collector:8889']
       - targets: ['otel-collector:8888']
 
-#  - job_name: 'locateweather'
-#    scrape_interval: 10s
-#    static_configs:
-#      - targets: ['locateweather:8080']
-#
-#  - job_name: 'readerweather'
-#    scrape_interval: 10s
-#    static_configs:
-#      - targets: ['readerweather:8081']
+  - job_name: 'locateweather'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['locateweather:8080']
+
+  - job_name: 'readerweather'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['readerweather:8081']

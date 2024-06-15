@@ -1,11 +1,14 @@
 package api
 
-import "github.com/IcaroTARique/pr-locate-weather/internal/infra/dto"
+import (
+	"context"
+	"github.com/IcaroTARique/pr-locate-weather/internal/infra/dto"
+)
 
 type Weather interface {
-	GetWeatherApiResponse(cityName string) (dto.WeatherApiResponse, error)
+	GetWeatherApiResponse(cityName string, ctx context.Context) (dto.WeatherApiResponse, error)
 }
 
 type Cep interface {
-	GetViaCepResponse(cep string) (dto.ViaCepResponse, error)
+	GetViaCepResponse(cep string, ctx context.Context) (dto.ViaCepResponse, error)
 }

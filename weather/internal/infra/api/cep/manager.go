@@ -1,25 +1,38 @@
 package cep
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/dto"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
 type ApiCep struct {
-	Url string
+	Url             string
+	Tracer          trace.Tracer
+	OtelRequestName string
 }
 
-func NewApiCep() *ApiCep {
+func NewApiCep(tracer trace.Tracer, otelRequestName string) *ApiCep {
 	return &ApiCep{
-		Url: "https://viacep.com.br/ws/%s/json/",
+		Url:             "https://viacep.com.br/ws/%s/json/",
+		Tracer:          tracer,
+		OtelRequestName: otelRequestName,
 	}
 }
 
-func (ac *ApiCep) GetViaCepResponse(cep string) (dto.ViaCepResponse, error) {
+func (ac *ApiCep) GetViaCepResponse(cep string, ctx context.Context) (dto.ViaCepResponse, error) {
 
-	res, err := http.Get(fmt.Sprintf(ac.Url, cep))
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf(ac.Url, cep), nil)
+	if err != nil {
+		return dto.ViaCepResponse{}, fmt.Errorf("error making request")
+	}
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return dto.ViaCepResponse{}, fmt.Errorf("error making request")
 	}
