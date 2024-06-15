@@ -1,17 +1,23 @@
 package weather_consumer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/IcaroTARique/pr-gobs/internal/dto"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
 type WeatherConsumer struct {
-	Protocol string
-	Domain   string
-	Port     string
-	Endpoint string
+	Protocol        string
+	Domain          string
+	Port            string
+	Endpoint        string
+	Tracer          trace.Tracer
+	OtelRequestName string
 }
 
 func NewWeatherConsumer(Domain, Port string) *WeatherConsumer {
@@ -23,13 +29,21 @@ func NewWeatherConsumer(Domain, Port string) *WeatherConsumer {
 	}
 }
 
-func (w *WeatherConsumer) GetTemperature(cep string) (dto.TemperatureResponse, error) {
+func (w *WeatherConsumer) GetTemperature(cep string, ctx context.Context) (dto.TemperatureResponse, error) {
+
 	Url := fmt.Sprintf(w.Protocol+w.Domain+":"+w.Port+w.Endpoint, cep)
 	fmt.Println("URL :", Url)
-	res, err := http.Get(Url)
+	req, err := http.NewRequestWithContext(ctx, "GET", Url, nil)
 	if err != nil {
 		return dto.TemperatureResponse{}, fmt.Errorf("error making request")
 	}
+
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return dto.TemperatureResponse{}, fmt.Errorf("error making request")
+	}
+	defer res.Body.Close()
 
 	var temperatureResponse dto.TemperatureResponse
 	err = json.NewDecoder(res.Body).Decode(&temperatureResponse)

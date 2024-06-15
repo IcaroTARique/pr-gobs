@@ -4,26 +4,40 @@ import (
 	"encoding/json"
 	"github.com/IcaroTARique/pr-gobs/internal/infra/weather_consumer"
 	"github.com/go-chi/chi"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
 type ApiTemperatureHandler struct {
-	weather weather_consumer.WeatherConsumer
+	weather         weather_consumer.WeatherConsumer
+	Tracer          trace.Tracer
+	OtelRequestName string
 }
 
-func NewApiTemperatureHandler(weather weather_consumer.WeatherConsumer) *ApiTemperatureHandler {
+func NewApiTemperatureHandler(weather weather_consumer.WeatherConsumer, tracer trace.Tracer, otelRequestName string) *ApiTemperatureHandler {
 	return &ApiTemperatureHandler{
-		weather: weather,
+		weather:         weather,
+		Tracer:          tracer,
+		OtelRequestName: otelRequestName,
 	}
 }
 
 func (th *ApiTemperatureHandler) NewApiTemperatureHandler(w http.ResponseWriter, r *http.Request) {
+
+	carrier := propagation.HeaderCarrier(r.Header)
+	ctx := r.Context()
+	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+	ctx, span := th.Tracer.Start(ctx, "Chamada externa"+th.OtelRequestName)
+	defer span.End()
+
 	cep := chi.URLParam(r, "cep")
 	if len(cep) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	res, err := th.weather.GetTemperature(cep)
+	res, err := th.weather.GetTemperature(cep, ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

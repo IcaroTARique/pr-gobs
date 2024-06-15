@@ -4,11 +4,18 @@ services:
     container_name: locateweather
     environment:
       - APP_PORT=8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - OTEL_SERVICE_NAME=readerweather
+      - OTEL_REQUEST_NAME=readerweather-request
     ports:
       - "8080:8080"
     restart: always
-    networks:
-      - weather_network
+    volumes:
+      - .:/go/src/app
+    depends_on:
+      - jaeger-all-in-one
+      - prometheus
+      - otel-collector
 
   reader:
     build: reader/.
@@ -17,13 +24,63 @@ services:
       - APP_PORT=8081
       - READER_PORT=8080
       - READER_HOST=locateweather
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - OTEL_SERVICE_NAME=reader
+      - OTEL_REQUEST_NAME=reader-request
     ports:
       - "8081:8081"
     restart: always
-    networks:
-      - weather_network
+    volumes:
+      - .:/go/src/app
+    depends_on:
+      - jaeger-all-in-one
+      - prometheus
+      - otel-collector
 
+  jaeger-all-in-one:
+    container_name: jaeger-all-in-one
+    image: jaegertracing/all-in-one:latest
+    restart: always
+    ports:
+      - "16686:16686"
+      - "14268"
+      - "14250"
 
-networks:
-    weather_network:
-        driver: bridge
+  zipkin-all-in-one:
+    image: openzipkin/zipkin:latest
+    restart: always
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    restart: always
+    volumes:
+      - ./.docker/prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  otel-collector:
+    container_name: otel-collector
+    image: otel/opentelemetry-collector:latest
+    restart: always
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./.docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "1888:1888"   # pprof extension
+      - "8888:8888"   # Prometheus metrics exposed by the collector
+      - "8889:8889"   # Prometheus exporter metrics
+      - "13133:13133" # health_check extension
+      - "4317:4317"   # OTLP gRPC receiver
+      - "55679:55679" # zpages extension
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: always
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
