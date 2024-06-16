@@ -13,13 +13,15 @@ import (
 type ApiTemperatureHandler struct {
 	weather         weather_consumer.WeatherConsumer
 	Tracer          trace.Tracer
+	Zipkin          trace.Tracer
 	OtelRequestName string
 }
 
-func NewApiTemperatureHandler(weather weather_consumer.WeatherConsumer, tracer trace.Tracer, otelRequestName string) *ApiTemperatureHandler {
+func NewApiTemperatureHandler(weather weather_consumer.WeatherConsumer, tracer, zipTracer trace.Tracer, otelRequestName string) *ApiTemperatureHandler {
 	return &ApiTemperatureHandler{
 		weather:         weather,
 		Tracer:          tracer,
+		Zipkin:          zipTracer,
 		OtelRequestName: otelRequestName,
 	}
 }
@@ -30,7 +32,11 @@ func (th *ApiTemperatureHandler) NewApiTemperatureHandler(w http.ResponseWriter,
 	ctx := r.Context()
 	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
 
-	ctx, span := th.Tracer.Start(ctx, "Chamada externa"+th.OtelRequestName)
+	//Zipkin
+	ctx, zipSpan := th.Zipkin.Start(ctx, "Chamada Zipkin "+th.OtelRequestName)
+	defer zipSpan.End()
+
+	ctx, span := th.Tracer.Start(ctx, "Chamada externa "+th.OtelRequestName)
 	defer span.End()
 
 	cep := chi.URLParam(r, "cep")

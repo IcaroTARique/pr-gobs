@@ -11,6 +11,7 @@ type conf struct {
 	OtelExporterEndpoint string `mapstructure:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	OtelServiceName      string `mapstructure:"OTEL_SERVICE_NAME"`
 	OtelRequestName      string `mapstructure:"OTEL_REQUEST_NAME"`
+	ZipkinDomain         string `mapstructure:"ZIPKIN_DOMAIN"`
 }
 
 func LoadConfig(path string) (*conf, error) {

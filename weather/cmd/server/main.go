@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"github.com/IcaroTARique/pr-locate-weather/configs"
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/api/cep"
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/api/weather"
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/webserver/handler"
 	"github.com/IcaroTARique/pr-locate-weather/internal/observability"
+	InternalZipkin "github.com/IcaroTARique/pr-locate-weather/internal/observability/zipkin"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -29,6 +32,11 @@ func main() {
 
 	observabilityProvider := observability.NewProvider(conf.OtelServiceName, conf.OtelExporterEndpoint)
 
+	//Zipkin
+	url := flag.String("zipkin", fmt.Sprintf("http://%s:9411/api/v2/spans", conf.ZipkinDomain), "zipkin url")
+	zipkinProvider := InternalZipkin.NewProvider(*url)
+	flag.Parse()
+
 	sigCh := make(chan os.Signal, 1)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -43,6 +51,18 @@ func main() {
 		ctx,
 		resource.WithAttributes(serviceName),
 	)
+
+	//Zipkin
+	zipShutdown, zipTracer, err := zipkinProvider.InitTracer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := zipShutdown(ctx); err != nil {
+			log.Fatalf("failed to zipShutdown TracerProvider: %s", err)
+		}
+	}()
+
 	shutdown, err := observabilityProvider.InitTracerProvider(ctx, res, conn)
 	if err != nil {
 		log.Fatal(err)
@@ -63,10 +83,12 @@ func main() {
 	}()
 
 	tracer := otel.Tracer("microsservice1-tracer")
+	//Zipkin
+	ztracer := zipTracer.Tracer("zipkin-tracer")
 
 	apiCep := cep.NewApiCep(tracer, conf.OtelServiceName)
 	apiWeather := weather.NewApiWeather(tracer, conf.OtelServiceName)
-	temperatureHandler := handler.NewApiTemperatureResponse(apiCep, apiWeather, tracer, conf.OtelServiceName)
+	temperatureHandler := handler.NewApiTemperatureResponse(apiCep, apiWeather, tracer, ztracer, conf.OtelServiceName)
 
 	r := chi.NewRouter()
 

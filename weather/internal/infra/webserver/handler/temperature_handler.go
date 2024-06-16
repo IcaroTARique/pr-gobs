@@ -16,14 +16,16 @@ type ApiTemperatureResponse struct {
 	cepApi          api.Cep
 	weatherApi      api.Weather
 	Tracer          trace.Tracer
+	Zipkin          trace.Tracer
 	OtelRequestName string
 }
 
-func NewApiTemperatureResponse(cepApi api.Cep, weatherApi api.Weather, tracer trace.Tracer, otelRequestName string) *ApiTemperatureResponse {
+func NewApiTemperatureResponse(cepApi api.Cep, weatherApi api.Weather, tracer, zipTracer trace.Tracer, otelRequestName string) *ApiTemperatureResponse {
 	return &ApiTemperatureResponse{
 		cepApi:          cepApi,
 		weatherApi:      weatherApi,
 		Tracer:          tracer,
+		Zipkin:          zipTracer,
 		OtelRequestName: otelRequestName,
 	}
 }
@@ -35,6 +37,11 @@ func (at *ApiTemperatureResponse) GetTemperatureHandler(w http.ResponseWriter, r
 	carrier := propagation.HeaderCarrier(r.Header)
 	ctx := r.Context()
 	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+
+	//Zipkin
+	ctx, zipSpan := at.Zipkin.Start(ctx, "Chamada Zipkin"+at.OtelRequestName)
+	defer zipSpan.End()
+
 	ctx, span := at.Tracer.Start(ctx, "Chamada externa"+at.OtelRequestName)
 	defer span.End()
 

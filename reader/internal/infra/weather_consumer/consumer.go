@@ -7,7 +7,6 @@ import (
 	"github.com/IcaroTARique/pr-gobs/internal/dto"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
@@ -16,7 +15,6 @@ type WeatherConsumer struct {
 	Domain          string
 	Port            string
 	Endpoint        string
-	Tracer          trace.Tracer
 	OtelRequestName string
 }
 

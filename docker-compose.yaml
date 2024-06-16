@@ -7,6 +7,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
       - OTEL_SERVICE_NAME=locateweather
       - OTEL_REQUEST_NAME=locateweather-request
+      - ZIPKIN_DOMAIN=zipkin-all-in-one
     ports:
       - "8080:8080"
     restart: always
@@ -27,6 +28,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
       - OTEL_SERVICE_NAME=readerweather
       - OTEL_REQUEST_NAME=readerweather-request
+      - ZIPKIN_DOMAIN=zipkin-all-in-one
     ports:
       - "8081:8081"
     restart: always
@@ -47,6 +49,7 @@ services:
       - "14250"
 
   zipkin-all-in-one:
+    container_name: zipkin-all-in-one
     image: openzipkin/zipkin:latest
     restart: always
     ports:
