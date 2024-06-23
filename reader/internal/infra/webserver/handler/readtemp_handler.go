@@ -33,7 +33,7 @@ func (th *ApiTemperatureHandler) NewApiTemperatureHandler(w http.ResponseWriter,
 	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
 
 	//Zipkin
-	ctx, zipSpan := th.Zipkin.Start(ctx, "Chamada Zipkin "+th.OtelRequestName)
+	ctx, zipSpan := th.Zipkin.Start(ctx, "Chamada Zipkin: "+th.OtelRequestName)
 	defer zipSpan.End()
 
 	ctx, span := th.Tracer.Start(ctx, "Chamada externa "+th.OtelRequestName)

@@ -17,15 +17,17 @@ type ApiTemperatureResponse struct {
 	weatherApi      api.Weather
 	Tracer          trace.Tracer
 	Zipkin          trace.Tracer
+	ZipWeather      trace.Tracer
 	OtelRequestName string
 }
 
-func NewApiTemperatureResponse(cepApi api.Cep, weatherApi api.Weather, tracer, zipTracer trace.Tracer, otelRequestName string) *ApiTemperatureResponse {
+func NewApiTemperatureResponse(cepApi api.Cep, weatherApi api.Weather, tracer, zipTracer, zipWeather trace.Tracer, otelRequestName string) *ApiTemperatureResponse {
 	return &ApiTemperatureResponse{
 		cepApi:          cepApi,
 		weatherApi:      weatherApi,
 		Tracer:          tracer,
 		Zipkin:          zipTracer,
+		ZipWeather:      zipWeather,
 		OtelRequestName: otelRequestName,
 	}
 }
@@ -39,8 +41,7 @@ func (at *ApiTemperatureResponse) GetTemperatureHandler(w http.ResponseWriter, r
 	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
 
 	//Zipkin
-	ctx, zipSpan := at.Zipkin.Start(ctx, "Chamada Zipkin"+at.OtelRequestName)
-	defer zipSpan.End()
+	ctx, zipSpan := at.Zipkin.Start(ctx, "Chamada Zipkin CEP: "+at.OtelRequestName)
 
 	ctx, span := at.Tracer.Start(ctx, "Chamada externa"+at.OtelRequestName)
 	defer span.End()
@@ -75,12 +76,16 @@ func (at *ApiTemperatureResponse) GetTemperatureHandler(w http.ResponseWriter, r
 			return
 		}
 	}
+	zipSpan.End()
+
+	ctx, zipWeatherSpan := at.Zipkin.Start(ctx, "Chamada Zipkin weather: "+at.OtelRequestName)
 	weatherResponse, err := at.weatherApi.GetWeatherApiResponse(cepResponse.Localidade, ctx)
 	fmt.Println(weatherResponse)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	zipWeatherSpan.End()
 
 	temperatureResponse := &dto.TemperatureResponse{
 		TemperatureC: weatherResponse.Current.TempC,

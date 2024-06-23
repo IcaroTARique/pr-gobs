@@ -63,6 +63,17 @@ func main() {
 		}
 	}()
 
+	//Zipkin
+	zipWeatherShutdown, zipWeatherTracer, err := zipkinProvider.InitTracer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := zipWeatherShutdown(ctx); err != nil {
+			log.Fatalf("failed to zipShutdown TracerProvider: %s", err)
+		}
+	}()
+
 	shutdown, err := observabilityProvider.InitTracerProvider(ctx, res, conn)
 	if err != nil {
 		log.Fatal(err)
@@ -85,10 +96,11 @@ func main() {
 	tracer := otel.Tracer("microsservice1-tracer")
 	//Zipkin
 	ztracer := zipTracer.Tracer("zipkin-tracer")
+	zWeatherTrace := zipWeatherTracer.Tracer("zipkin-weather-tracer")
 
-	apiCep := cep.NewApiCep(tracer, conf.OtelServiceName)
-	apiWeather := weather.NewApiWeather(tracer, conf.OtelServiceName)
-	temperatureHandler := handler.NewApiTemperatureResponse(apiCep, apiWeather, tracer, ztracer, conf.OtelServiceName)
+	apiCep := cep.NewApiCep(conf.OtelServiceName)
+	apiWeather := weather.NewApiWeather(conf.OtelServiceName)
+	temperatureHandler := handler.NewApiTemperatureResponse(apiCep, apiWeather, tracer, ztracer, zWeatherTrace, conf.OtelServiceName)
 
 	r := chi.NewRouter()
 

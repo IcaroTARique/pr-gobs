@@ -7,20 +7,17 @@ import (
 	"github.com/IcaroTARique/pr-locate-weather/internal/infra/dto"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
 type ApiCep struct {
 	Url             string
-	Tracer          trace.Tracer
 	OtelRequestName string
 }
 
-func NewApiCep(tracer trace.Tracer, otelRequestName string) *ApiCep {
+func NewApiCep(otelRequestName string) *ApiCep {
 	return &ApiCep{
 		Url:             "https://viacep.com.br/ws/%s/json/",
-		Tracer:          tracer,
 		OtelRequestName: otelRequestName,
 	}
 }
