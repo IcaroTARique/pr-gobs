@@ -42,6 +42,18 @@ func (w *WeatherConsumer) GetTemperature(cep string, ctx context.Context) (dto.T
 		return dto.TemperatureResponse{}, fmt.Errorf("error making request")
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode == http.StatusBadRequest {
+			return dto.TemperatureResponse{}, fmt.Errorf("error making request")
+		}
+		if res.StatusCode == http.StatusUnprocessableEntity {
+			return dto.TemperatureResponse{}, fmt.Errorf("invalid zipcode")
+		}
+		if res.StatusCode == http.StatusNotFound {
+			return dto.TemperatureResponse{}, fmt.Errorf("cannot find zipcode")
+		}
+		return dto.TemperatureResponse{}, fmt.Errorf("internal server error")
+	}
 
 	var temperatureResponse dto.TemperatureResponse
 	err = json.NewDecoder(res.Body).Decode(&temperatureResponse)

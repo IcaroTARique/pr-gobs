@@ -1,2 +1,8 @@
 ### GET temperature and local
 GET http://localhost:8081/temperature/58046320 HTTP/1.1
+
+### GET out of format CEP
+GET http://localhost:8081/temperature/058046320 HTTP/1.1
+
+### GET cannot find CEP
+GET http://localhost:8081/temperature/58046321 HTTP/1.1

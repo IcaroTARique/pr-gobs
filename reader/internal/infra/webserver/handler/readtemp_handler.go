@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"github.com/IcaroTARique/pr-gobs/internal/dto"
 	"github.com/IcaroTARique/pr-gobs/internal/infra/weather_consumer"
 	"github.com/go-chi/chi"
 	"go.opentelemetry.io/otel"
@@ -46,8 +47,29 @@ func (th *ApiTemperatureHandler) NewApiTemperatureHandler(w http.ResponseWriter,
 	}
 	res, err := th.weather.GetTemperature(cep, ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		switch err.Error() {
+		case "error making request":
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(dto.Error{Message: err.Error()}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			return
+		case "invalid zipcode":
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			if err := json.NewEncoder(w).Encode(dto.Error{Message: err.Error()}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			return
+		case "cannot find zipcode":
+			w.WriteHeader(http.StatusNotFound)
+			if err := json.NewEncoder(w).Encode(dto.Error{Message: err.Error()}); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			return
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(res)
